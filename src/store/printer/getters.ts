@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import { GetterTree } from 'vuex'
 import { RootState } from '../types'
-import { PrinterState, Heater, Fan, Led, OutputPin, Sensor, RunoutSensor, Extruder, MCU } from './types'
+import { PrinterState, Heater, Fan, Led, OutputPin, Sensor, RunoutSensor, Extruder, MCU, Endstop, Probe } from './types'
 import { get } from 'lodash-es'
 import getKlipperType from '@/util/get-klipper-type'
 
@@ -282,11 +282,21 @@ export const getters: GetterTree<PrinterState, RootState> = {
   },
 
   getEndstops: (state) => {
-    const sorted: { [index: string]: string } = {}
-    Object.keys(state.printer.endstops).sort().forEach((key) => {
-      sorted[key] = state.printer.endstops[key]
-    })
-    return sorted
+    const endstops: Endstop[] = []
+    Object.keys(state.printer.endstops)
+      .sort()
+      .forEach(key => {
+        endstops.push({
+          name: key,
+          state: state.printer.endstops[key]
+        })
+      })
+    return endstops
+  },
+
+  getProbe: (state) => {
+    const probe: Probe = state.printer.probe
+    return probe
   },
 
   /**
@@ -577,6 +587,27 @@ export const getters: GetterTree<PrinterState, RootState> = {
     return sensors
   },
 
+  getBedScrews: (_, getters) => {
+    const config = getters.getPrinterSettings('bed_screws')
+    const screws = []
+
+    for (let index = 1; index <= 99; index++) {
+      const adjust = config[`screw${index}`]
+
+      if (!adjust) {
+        break
+      }
+
+      screws.push({
+        adjust,
+        fine: config[`screw${index}_fine_adjust`],
+        name: config[`screw${index}_name`]
+      })
+    }
+
+    return screws
+  },
+
   /**
    * Return a required setting from the printer.config object.
    */
@@ -672,5 +703,9 @@ export const getters: GetterTree<PrinterState, RootState> = {
 
   getIsManualProbeActive: (state) => {
     return state.printer.manual_probe?.is_active || false
+  },
+
+  getIsBedScrewsAdjustActive: (state) => {
+    return state.printer.bed_screws?.is_active || false
   }
 }

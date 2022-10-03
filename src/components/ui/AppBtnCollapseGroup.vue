@@ -18,7 +18,8 @@
     <template #activator="{ on, attrs }">
       <app-btn
         fab
-        x-small
+        :x-small="size === 'x-small'"
+        :small="size === 'small'"
         text
         color=""
         v-bind="attrs"
@@ -43,10 +44,13 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
 @Component({})
 export default class AppBtnCollapseGroup extends Vue {
   @Prop({ type: Boolean, default: false })
-  public collapsed!: boolean
+  readonly collapsed!: boolean
 
   @Prop({ type: String, default: '$menu' })
-  public menuIcon!: string
+  readonly menuIcon!: string
+
+  @Prop({ type: String, default: 'x-small' })
+  readonly size!: string
 
   get isCollapsed () {
     if (this.collapsed) return true

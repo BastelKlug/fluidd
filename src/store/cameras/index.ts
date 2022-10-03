@@ -14,13 +14,15 @@ export const defaultState = (): CamerasState => {
         id: uuidv4(),
         enabled: false,
         name: 'Default',
-        type: 'mjpgadaptive',
-        fpstarget: 15,
-        fpsidletarget: 5,
-        url: '/webcam/?action=stream',
+        service: 'mjpegstreamer-adaptive',
+        targetFps: 15,
+        targetFpsIdle: 5,
+        urlStream: '/webcam/?action=stream',
+        urlSnapshot: '/webcam/?action=snapshot',
         flipX: false,
         flipY: false,
-        height: 720
+        rotation: 0,
+        aspectRatio: '16:9'
       }
     ]
   }

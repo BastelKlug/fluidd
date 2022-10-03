@@ -1,11 +1,13 @@
 import { AppTablePartialHeader } from '@/types/tableheaders'
 import { VuetifyThemeItem } from 'vuetify/types/services/theme'
+import { FileFilterType, FileRoot } from '../files/types'
 
 export interface ConfigState {
   [key: string]: any;
   apiUrl: string;
   socketUrl: string;
   layoutMode: boolean;
+  containerColumnCount: number;
   instances: InstanceConfig[];
   uiSettings: UiSettings;
   hostConfig: HostConfig;
@@ -18,6 +20,7 @@ export interface UiSettings {
   dashboard: DashboardConfig;
   tableHeaders: AppTableConfiguredHeaders;
   gcodePreview: GcodePreviewConfig;
+  fileSystem: FileSystemConfig;
 }
 
 export interface HostConfig {
@@ -61,7 +64,10 @@ export interface GeneralConfig {
   cameraFullscreenAction: CameraFullscreenAction;
   topNavPowerToggle: null | string;
   showManualProbeDialogAutomatically: boolean;
+  showBedScrewsAdjustDialogAutomatically: boolean;
   forceMoveToggleWarning: boolean;
+  enableDiagnostics: boolean;
+  thumbnailSize: number;
 }
 
 export type CameraFullscreenAction = 'embed' | 'rawstream';
@@ -164,4 +170,8 @@ export interface GcodePreviewConfig {
     horizontal: boolean;
     vertical: boolean;
   };
+}
+
+export interface FileSystemConfig {
+  activeFilters: Partial<Record<FileRoot, FileFilterType[]>>
 }

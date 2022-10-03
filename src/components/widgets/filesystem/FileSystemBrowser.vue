@@ -69,8 +69,9 @@
               <img
                 v-if="item.thumbnails && item.thumbnails.length"
                 class="file-icon-thumb"
-                :class="{dense, large: largeThumbnails}"
-                :src="getThumbUrl(item.thumbnails, item.path, false, item.modified)"
+                :class="{dense}"
+                :style="{'max-width': `${thumbnailSize}px`, 'max-height': `${thumbnailSize}px`}"
+                :src="getThumbUrl(item.thumbnails, item.path, thumbnailSize > 32, item.modified)"
               >
             </v-layout>
           </td>
@@ -112,6 +113,26 @@
           <file-row-item
             v-if="root === 'gcodes'"
             :headers="headers"
+            item-value="filament_name"
+          >
+            <span v-if="item.filament_name !== undefined">
+              {{ item.filament_name }}
+            </span>
+          </file-row-item>
+
+          <file-row-item
+            v-if="root === 'gcodes'"
+            :headers="headers"
+            item-value="filament_type"
+          >
+            <span v-if="item.filament_type !== undefined">
+              {{ item.filament_type }}
+            </span>
+          </file-row-item>
+
+          <file-row-item
+            v-if="root === 'gcodes'"
+            :headers="headers"
             item-value="filament_total"
           >
             <span v-if="item.filament_total !== undefined">
@@ -136,6 +157,16 @@
           >
             <span v-if="item.history && item.history.filament_used !== undefined">
               {{ $filters.getReadableLengthString(item.history.filament_used) }}
+            </span>
+          </file-row-item>
+
+          <file-row-item
+            v-if="root === 'gcodes'"
+            :headers="headers"
+            item-value="nozzle_diameter"
+          >
+            <span v-if="item.nozzle_diameter !== undefined">
+              {{ item.nozzle_diameter }} mm
             </span>
           </file-row-item>
 
@@ -212,6 +243,16 @@
           <file-row-item
             v-if="root === 'gcodes'"
             :headers="headers"
+            item-value="chamber_temp"
+          >
+            <span v-if="item.chamber_temp !== undefined">
+              {{ item.chamber_temp }}<small>°C</small>
+            </span>
+          </file-row-item>
+
+          <file-row-item
+            v-if="root === 'gcodes'"
+            :headers="headers"
             item-value="print_start_time"
           >
             <span v-if="item.print_start_time !== undefined && item.print_start_time !== null">
@@ -246,8 +287,7 @@
 import { Component, Prop, Mixins, Watch } from 'vue-property-decorator'
 import {
   AppFileWithMeta,
-  FileBrowserEntry,
-  FileFilter
+  FileBrowserEntry
 } from '@/store/files/types'
 import { AppTableHeader } from '@/types'
 import FilesMixin from '@/mixins/files'
@@ -261,41 +301,35 @@ import FileRowItem from './FileRowItem.vue'
 })
 export default class FileSystemBrowser extends Mixins(FilesMixin) {
   @Prop({ type: String, required: true })
-  public root!: string
+  readonly root!: string
 
   @Prop({ type: Array, required: true })
-  public files!: FileBrowserEntry[]
+  readonly files!: FileBrowserEntry[]
 
   @Prop({ type: Boolean, default: false })
-  public dense!: boolean
+  readonly dense!: boolean
 
   @Prop({ type: Boolean, default: false })
-  public loading!: boolean
+  readonly loading!: boolean
 
   // Currently defined list of headers.
   @Prop({ type: Array, required: true })
-  public headers!: AppTableHeader[]
+  readonly headers!: AppTableHeader[]
 
   @Prop({ type: String, required: false })
-  public search!: string
-
-  @Prop({ type: Array, default: () => { return [] } })
-  public filters!: FileFilter[]
+  readonly search!: string
 
   @Prop({ type: Boolean, required: true })
-  public dragState!: boolean
+  readonly dragState!: boolean
 
   @Prop({ type: Boolean, default: false })
-  public disabled!: boolean
+  readonly disabled!: boolean
 
   @Prop({ type: Boolean, default: false })
-  public bulkActions!: boolean
-
-  @Prop({ type: Boolean, default: false })
-  public largeThumbnails!: boolean
+  readonly bulkActions!: boolean
 
   @Prop({ type: Array, required: true })
-  public selected!: (FileBrowserEntry | AppFileWithMeta)[]
+  readonly selected!: (FileBrowserEntry | AppFileWithMeta)[]
 
   dragItem: FileBrowserEntry | AppFileWithMeta | null = null
   ghost: HTMLDivElement | undefined = undefined
@@ -307,6 +341,10 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
       this.$store.getters['server/componentSupport']('history') &&
       this.root === 'gcodes'
     )
+  }
+
+  get thumbnailSize () {
+    return this.$store.state.config.uiSettings.general.thumbnailSize
   }
 
   mounted () {
@@ -440,10 +478,4 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
   .file-icon-thumb.dense {
     max-width: 16px;
   }
-
-  .file-icon-thumb.large {
-    max-width: initial;
-    max-height: 32px;
-  }
-
 </style>

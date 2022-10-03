@@ -11,6 +11,7 @@ export const defaultState = (): ConfigState => {
     apiUrl: '',
     socketUrl: '',
     layoutMode: false,
+    containerColumnCount: 2,
     hostConfig: {
       endpoints: [],
       blacklist: [],
@@ -69,7 +70,10 @@ export const defaultState = (): ConfigState => {
         cameraFullscreenAction: 'embed',
         topNavPowerToggle: null,
         showManualProbeDialogAutomatically: true,
-        forceMoveToggleWarning: true
+        showBedScrewsAdjustDialogAutomatically: true,
+        forceMoveToggleWarning: true,
+        enableDiagnostics: false,
+        thumbnailSize: 32
       },
       theme: {
         isDark: true,
@@ -93,12 +97,16 @@ export const defaultState = (): ConfigState => {
         gcodes_dashboard: [
           { value: 'first_layer_extr_temp', visible: false },
           { value: 'first_layer_bed_temp', visible: false },
+          { value: 'chamber_temp', visible: false },
           { value: 'history.total_duration', visible: false },
           { value: 'history.print_duration', visible: false },
           { value: 'estimated_time', visible: false },
+          { value: 'nozzle_diameter', visible: false },
           { value: 'slicer_version', visible: false },
           { value: 'slicer', visible: false },
           { value: 'history.filament_used', visible: false },
+          { value: 'filament_name', visible: false },
+          { value: 'filament_type', visible: false },
           { value: 'filament_total', visible: false },
           { value: 'filament_weight_total', visible: false },
           { value: 'object_height', visible: false },
@@ -110,6 +118,7 @@ export const defaultState = (): ConfigState => {
           { value: 'history.filament_used', visible: false },
           { value: 'slicer_version', visible: false },
           { value: 'history.print_duration', visible: false },
+          { value: 'chamber_temp', visible: false },
           { value: 'first_layer_extr_temp', visible: false },
           { value: 'first_layer_bed_temp', visible: false }
         ],
@@ -130,6 +139,12 @@ export const defaultState = (): ConfigState => {
         flip: {
           horizontal: false,
           vertical: true
+        }
+      },
+      fileSystem: {
+        activeFilters: {
+          gcodes: [],
+          config: []
         }
       }
     }

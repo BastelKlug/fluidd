@@ -8,7 +8,7 @@
     <v-form @submit.prevent="sendAccept">
       <v-card>
         <v-card-title class="card-heading py-2">
-          <span class="focus--text">{{ $t('app.tool.tooltip.manual_probe') }}</span>
+          <span class="focus--text">{{ $t('app.tool.title.manual_probe') }}</span>
         </v-card-title>
 
         <v-divider />
@@ -166,7 +166,7 @@ import ToolheadMixin from '@/mixins/toolhead'
 @Component({})
 export default class ManualProbeDialog extends Mixins(StateMixin, ToolheadMixin) {
   @Prop({ type: Boolean, default: false })
-  public value!: boolean
+  readonly value!: boolean
 
   get offsets () {
     return [

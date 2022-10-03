@@ -11,7 +11,7 @@
       >
         <app-btn-toolhead-move
           :color="axisButtonColor(yHomed)"
-          :disabled="axisButtonDisabled(yHomed)"
+          :disabled="axisButtonDisabled(yHomed, yHasMultipleSteppers)"
           icon="$up"
           @click="sendMoveGcode('Y', toolheadMoveLength)"
         />
@@ -22,7 +22,7 @@
       >
         <app-btn-toolhead-move
           :color="axisButtonColor(zHomed)"
-          :disabled="axisButtonDisabled(zHomed)"
+          :disabled="axisButtonDisabled(zHomed, zHasMultipleSteppers)"
           icon="$up"
           @click="sendMoveGcode('Z', toolheadMoveLength)"
         />
@@ -51,7 +51,7 @@
       <v-col cols="auto">
         <app-btn-toolhead-move
           :color="axisButtonColor(xHomed)"
-          :disabled="axisButtonDisabled(xHomed)"
+          :disabled="axisButtonDisabled(xHomed, xHasMultipleSteppers)"
           icon="$left"
           @click="sendMoveGcode('X', toolheadMoveLength, true)"
         />
@@ -76,7 +76,7 @@
       >
         <app-btn-toolhead-move
           :color="axisButtonColor(xHomed)"
-          :disabled="axisButtonDisabled(xHomed)"
+          :disabled="axisButtonDisabled(xHomed, xHasMultipleSteppers)"
           icon="$right"
           @click="sendMoveGcode('X', toolheadMoveLength)"
         />
@@ -121,8 +121,8 @@
         class="ml-12 mr-7"
       >
         <app-btn-toolhead-move
-          :color="axisButtonColor(xHomed)"
-          :disabled="axisButtonDisabled(yHomed)"
+          :color="axisButtonColor(yHomed)"
+          :disabled="axisButtonDisabled(yHomed, yHasMultipleSteppers)"
           icon="$down"
           @click="sendMoveGcode('Y', toolheadMoveLength, true)"
         />
@@ -133,7 +133,7 @@
       >
         <app-btn-toolhead-move
           :color="axisButtonColor(zHomed)"
-          :disabled="axisButtonDisabled(yHomed)"
+          :disabled="axisButtonDisabled(zHomed, zHasMultipleSteppers)"
           icon="$down"
           @click="sendMoveGcode('Z', toolheadMoveLength, true)"
         />
@@ -195,7 +195,7 @@ export default class ToolheadMoves extends Mixins(StateMixin, ToolheadMixin) {
   fab = false
 
   @Prop({ type: Boolean, default: false })
-  public forceMove!: boolean
+  readonly forceMove!: boolean
 
   get kinematics () {
     return this.$store.getters['printer/getPrinterSettings']('printer.kinematics') || ''
@@ -231,8 +231,8 @@ export default class ToolheadMoves extends Mixins(StateMixin, ToolheadMixin) {
     return axisHomed ? 'primary' : undefined
   }
 
-  axisButtonDisabled (axisHomed: boolean) {
-    return !this.klippyReady || (!axisHomed && !this.forceMove)
+  axisButtonDisabled (axisHomed: boolean, axisMultipleSteppers: boolean) {
+    return !this.klippyReady || (!axisHomed && !(this.forceMove && !axisMultipleSteppers))
   }
 
   /**
@@ -249,7 +249,10 @@ export default class ToolheadMoves extends Mixins(StateMixin, ToolheadMixin) {
       : distance
 
     if (this.forceMove) {
-      this.sendGcode(`FORCE_MOVE STEPPER=stepper_${axis} DISTANCE=${distance} VELOCITY=${rate}`)
+      const accel = (axis.toLowerCase() === 'z')
+        ? this.$store.getters['printer/getPrinterSettings']('printer.max_z_accel')
+        : this.$store.state.printer.printer.toolhead.max_accel
+      this.sendGcode(`FORCE_MOVE STEPPER=stepper_${axis} DISTANCE=${distance} VELOCITY=${rate} ACCEL=${accel}`)
     } else {
       this.sendGcode(`G91
       G1 ${axis}${distance} F${rate * 60}

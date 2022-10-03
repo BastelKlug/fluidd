@@ -1,11 +1,11 @@
 import { HistoryItem } from '@/store/history/types'
 
 export interface FilesState {
-  [key: string]: Files[] | FilesUpload[] | FileDownload | string[] | CurrentPaths | DiskUsage | null;
   uploads: FilesUpload[];
   download: FileDownload | null;
   currentPaths: CurrentPaths;
   disk_usage: DiskUsage;
+  rootFiles: RootFiles;
 
   gcodes: Files[];
   config: Files[];
@@ -49,15 +49,20 @@ export interface KlipperFile {
 }
 
 export interface KlipperFileMeta {
+  chamber_temp?: number;
   estimated_time?: number;
+  filament_name?: string;
   filament_total?: number;
+  filament_type?: string;
   filament_weight_total?: number;
   first_layer_bed_temp?: number;
   first_layer_extr_temp?: number;
   first_layer_height?: number;
   gcode_end_byte?: number;
   gcode_start_byte?: number;
+  layer_count?: number;
   layer_height?: number;
+  nozzle_diameter?: number;
   object_height?: number;
   slicer?: string;
   slicer_version?: string;
@@ -129,11 +134,7 @@ export interface FilesUpload extends FileDownload {
   cancelled: boolean; // in a cancelled state, don't show - nor try to upload.
 }
 
-export interface FileFilter {
-  value: string;
-  text: string;
-  desc: string;
-}
+export type FileFilterType = 'print_start_time' | 'hidden_files' | 'klipper_backup_files'
 
 export type FileRoot = 'gcodes' | 'config' | 'config_examples' | 'docs' | 'logs' | 'timelapse'
 
@@ -145,4 +146,20 @@ export interface FilePreviewState {
   src: string;
   type: string;
   appFile?: AppFile;
+}
+
+export interface RootFiles {
+  gcodes: RootFile[];
+  config: RootFile[];
+  config_examples: RootFile[];
+  docs: RootFile[];
+  logs: RootFile[];
+  timelapse: RootFile[];
+}
+
+export interface RootFile {
+  path: string;
+  modified: number;
+  size: number;
+  permissions: string;
 }
