@@ -8,6 +8,7 @@ import { SocketActions } from '@/api/socketActions'
 import { EventBus, FlashMessageTypes } from '@/eventBus'
 import { upperFirst, camelCase } from 'lodash-es'
 import IsKeyOf from '@/util/is-key-of'
+import { announcements } from '@/stores'
 
 let retryTimeout: number
 
@@ -222,16 +223,19 @@ export const actions: ActionTree<SocketState, RootState> = {
     dispatch('timelapse/onEvent', payload, { root: true })
   },
 
-  async notifyAnnouncementUpdate ({ dispatch }, payload) {
-    dispatch('announcements/onAnnouncementUpdate', payload, { root: true })
+  async notifyAnnouncementUpdate (_, payload) {
+    const announcementsStore = announcements()
+    announcementsStore.onAnnouncementUpdate(payload)
   },
 
-  async notifyAnnouncementDismissed ({ dispatch }, payload) {
-    dispatch('announcements/onAnnouncementDismissed', payload, { root: true })
+  async notifyAnnouncementDismissed (_, payload) {
+    const announcementsStore = announcements()
+    announcementsStore.onAnnouncementDismissed(payload)
   },
 
-  async notifyAnnouncementWake ({ dispatch }, payload) {
-    dispatch('announcements/onAnnouncementWake', payload, { root: true })
+  async notifyAnnouncementWake (_, payload) {
+    const announcementsStore = announcements()
+    announcementsStore.onAnnouncementWake(payload)
   },
 
   async notifyWebcamsChanged ({ dispatch }, payload) {

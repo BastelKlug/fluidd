@@ -7,6 +7,7 @@ import axios from 'axios'
 import router from './router'
 import { httpClientActions } from '@/api/httpClientActions'
 import sanitizeEndpoint from '@/util/sanitize-endpoint'
+import { storesReset } from './stores/helpers'
 
 // Load API configuration
 /**
@@ -126,6 +127,10 @@ const getMoorakerDatabase = async (apiConfig: ApiConfig, namespace: string) => {
   }
 
   return result
+}
+
+export const storesInit = async () => {
+  await storesReset()
 }
 
 export const appInit = async (apiConfig?: ApiConfig, hostConfig?: HostConfig): Promise<InitConfig> => {

@@ -176,7 +176,7 @@ export const Globals = Object.freeze({
     updateManager: { name: 'update_manager', dispatch: 'version/init' },
     history: { name: 'history', dispatch: 'history/init' },
     timelapse: { name: 'timelapse', dispatch: 'timelapse/init' },
-    announcements: { name: 'announcements', dispatch: 'announcements/init' },
+    announcements: { name: 'announcements', store: 'announcements', action: 'init' }, // pinia store
     webcams: { name: 'webcam', dispatch: 'webcams/init' }
   },
   // Ordered by weight.

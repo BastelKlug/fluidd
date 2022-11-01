@@ -1,7 +1,8 @@
 import { GetterTree } from 'vuex'
 import { AppNotification, NotificationsState } from './types'
-import { Announcement } from '../announcements/types'
+import { Announcement } from '@/stores/announcements/state'
 import { RootState } from '../types'
+import { announcements } from '@/stores'
 
 export const getters: GetterTree<NotificationsState, RootState> = {
   getNotifications: (state, getters) => {
@@ -19,10 +20,10 @@ export const getters: GetterTree<NotificationsState, RootState> = {
     ]
   },
 
-  getAnnouncementsAsNotifications: (state, getters, rootState, rootGetters) => {
-    const announcements = rootGetters['announcements/getAnnouncements']
-
-    return announcements.map((a: Announcement) => ({
+  getAnnouncementsAsNotifications: () => {
+    const announcementsStore = announcements()
+    const getAnnouncements = announcementsStore.getAnnouncements
+    return getAnnouncements.map((a: Announcement) => ({
       id: a.entry_id,
       type: 'announcement',
       to: a.url,

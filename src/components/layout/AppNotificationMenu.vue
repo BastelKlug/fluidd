@@ -149,95 +149,88 @@
   </v-menu>
 </template>
 
-<script lang="ts">
-import { AppNotification } from '@/store/notifications/types'
-import { Component, Vue } from 'vue-property-decorator'
+<script setup lang="ts">
+import vuetify from '@/plugins/vuetify'
+import { announcements, notifications as note } from '@/stores'
+import { AppNotification } from '@/stores/notifications/state'
+import { computed, ref } from 'vue'
 import AppAnnouncementDismissMenu from './AppAnnouncementDismissMenu.vue'
 
-@Component({
-  components: {
-    AppAnnouncementDismissMenu
-  }
+const menu = ref(false)
+
+const announcementsStore = announcements()
+const notificationsStore = note()
+
+const notifications = computed((): AppNotification[] => {
+  return notificationsStore.getNotifications
 })
-export default class AppNotificationMenu extends Vue {
-  menu = false
 
-  get notifications (): AppNotification[] {
-    return this.$store.getters['notifications/getNotifications']
-  }
+const notificationsCounter = computed((): number => {
+  const temp_notifications: AppNotification[] = notifications.value.filter(n => !n.noCount)
+  return temp_notifications.length
+})
 
-  get notificationsCounter (): number {
-    const notifications: AppNotification[] = this.notifications.filter(n => !n.noCount)
-    return notifications.length
-  }
+const clearableNotifications = computed((): AppNotification[] => {
+  const notifications: AppNotification[] = notificationsStore.getNotifications
+  return notifications.filter(n => n.clear)
+})
 
-  get clearableNotifications (): AppNotification[] {
-    const notifications: AppNotification[] = this.$store.getters['notifications/getNotifications']
-    return notifications.filter(n => n.clear)
-  }
-
-  /**
-   * Color is determined by type. Pull the highest weighted type.
-   */
-  get color () {
-    if (this.notifications.length <= 0) return 'transparent'
-    let c = 'transparent'
-    for (const n of this.notifications) {
-      if (n.type === 'warning' && c !== 'error') c = 'warning'
-      if (n.type === 'error' && c !== 'error') {
-        c = 'error'
-        break
-      }
+const color = computed(() => {
+  if (notifications.value.length <= 0) return 'transparent'
+  let c = 'transparent'
+  for (const n of notifications.value) {
+    if (n.type === 'warning' && c !== 'error') c = 'warning'
+    if (n.type === 'error' && c !== 'error') {
+      c = 'error'
+      break
     }
-    return c
   }
+  return c
+})
 
-  get badgeColor () {
-    if (this.color === 'transparent') return 'info'
-    return this.color
+const badgeColor = computed(() => {
+  if (color.value === 'transparent') return 'info'
+  return color.value
+})
+
+const isMobile = computed(() => {
+  return vuetify.framework.breakpoint.mobile
+})
+
+// Was this function ever called?
+function icon (n: AppNotification) {
+  if (n.icon) return n.icon
+  switch (n.type) {
+    case 'info':
+    case 'success':
+    case 'announcement':
+      return '$info'
+    case 'warning':
+      return '$warning'
   }
+  return '$error'
+}
 
-  get isMobile () {
-    return this.$vuetify.breakpoint.mobile
-  }
+function classes (n: AppNotification) {
+  return `notification-${n.type}`
+}
 
-  /**
-   * If no defined icon, pull from a standard set based on notification type.
-   */
-  icon (n: AppNotification) {
-    if (n.icon) return n.icon
-    switch (n.type) {
-      case 'info':
-      case 'success':
-      case 'announcement':
-        return '$info'
-      case 'warning':
-        return '$warning'
-    }
-    return '$error'
-  }
+function handleClear (n: AppNotification) {
+  notificationsStore.clearNotification(n)
+}
 
-  classes (n: AppNotification) {
-    return `notification-${n.type}`
-  }
+async function handleClearAll () {
+  notificationsStore.clearAll()
+}
 
-  handleClear (n: AppNotification) {
-    this.$store.dispatch('notifications/clearNotification', n)
-  }
+function handleAnnouncementDismiss (n: AppNotification, wake_time: number) {
+  if (n && wake_time) {
+    announcementsStore.dismiss({
+      entry_id: n.id,
+      wake_time
+    })
 
-  handleClearAll () {
-    this.$store.dispatch('notifications/clearAll')
-  }
-
-  handleAnnouncementDismiss (n: AppNotification, wake_time: number) {
-    if (n && wake_time) {
-      this.$store.dispatch('announcements/dismiss', {
-        entry_id: n.id,
-        wake_time
-      })
-
-      this.menu = false
-    }
+    menu.value = false
   }
 }
 </script>

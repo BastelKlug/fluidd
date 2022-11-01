@@ -12,6 +12,7 @@ import consola from 'consola'
 import { camelCase } from 'lodash-es'
 import { httpClientActions } from '@/api/httpClientActions'
 import deepMerge from 'deepmerge'
+import * as stores from '@/stores'
 
 export class WebSocketClient {
   url = ''
@@ -145,6 +146,12 @@ export class WebSocketClient {
             consola.debug(`${this.logPrefix} Response:`, result)
             if (request.dispatch && this.store) this.store?.dispatch(request.dispatch, result)
             if (request.commit && this.store) this.store?.commit(request.commit, result)
+
+            // pinia store
+            if (request.action && request.store && stores[request.store as keyof typeof stores]) {
+              const store = stores[request.store as keyof typeof stores]() // get store
+              store[request.action as keyof typeof store](result) // call action
+            }
           } else {
             // These are socket notifications (i.e., no specific request was made..)
             // Dispatch with the name of the method, converted to camelCase.
@@ -241,6 +248,11 @@ export class WebSocketClient {
       }
       if (options && options.dispatch) request.dispatch = options.dispatch
       if (options && options.commit) request.commit = options.commit
+
+      // // pinia store
+      if (options && options.store) request.store = options.store
+      if (options && options.action) request.action = options.action
+
       this.requests.push(request)
       this.connection.send(JSON.stringify(packet))
     } else {
@@ -280,6 +292,8 @@ export interface NotifyOptions {
   dispatch?: string;
   commit?: string;
   wait?: string;
+  store?: string;
+  action?: string;
 }
 
 interface Request {
@@ -288,6 +302,8 @@ interface Request {
   commit?: string;
   params?: any;
   wait?: string;
+  store?: string;
+  action?: string;
 }
 
 interface SocketRequest {

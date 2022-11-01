@@ -20,9 +20,10 @@ import VueVirtualScroller from 'vue-virtual-scroller'
 import VueMeta from 'vue-meta'
 import VuetifyConfirm from 'vuetify-confirm'
 import { InlineSvgPlugin } from 'vue-inline-svg'
+import { createPinia, PiniaVuePlugin } from 'pinia'
 
 // Init.
-import { appInit } from './init'
+import { appInit, storesInit } from './init'
 import { InitConfig } from './store/config/types'
 
 // Import plugins
@@ -45,6 +46,9 @@ Vue.directive('blur', Blur)
 Vue.component('EChart', () => import('./vue-echarts-chunk'))
 
 // Use any Plugins
+Vue.use(PiniaVuePlugin)
+const pinia = createPinia()
+
 Vue.use(VueVirtualScroller)
 Vue.use(DayJSPlugin)
 Vue.use(FiltersPlugin)
@@ -82,8 +86,10 @@ appInit()
       router,
       store,
       vuetify,
+      pinia,
       render: (h) => h(App)
     }).$mount('#app')
+    storesInit() // must be called after Vue initialization, so pinia is available
   })
   .catch((e) => {
     consola.debug('Error attempting to init App:', e)

@@ -3,6 +3,7 @@ import { EventBus, FlashMessageTypes } from '@/eventBus'
 import { v4 as uuidv4 } from 'uuid'
 import { NotificationsState, AppPushNotification, AppNotification } from './types'
 import { RootState } from '../types'
+import { announcements } from '@/stores'
 
 export const actions: ActionTree<NotificationsState, RootState> = {
   /**
@@ -54,9 +55,10 @@ export const actions: ActionTree<NotificationsState, RootState> = {
   /**
    * Clear a notification.
    */
-  async clearNotification ({ commit, dispatch }, n: AppNotification | string) {
+  async clearNotification ({ commit }, n: AppNotification | string) {
     if (typeof n === 'object' && n.type === 'announcement') {
-      dispatch('announcements/dismiss', { entry_id: n.id }, { root: true })
+      const announcementsStore = announcements()
+      announcementsStore.dismiss({ entry_id: n.id })
       return
     }
 
@@ -66,9 +68,10 @@ export const actions: ActionTree<NotificationsState, RootState> = {
   /**
    * Clear all notifications.
    */
-  async clearAll ({ commit, dispatch }) {
+  async clearAll ({ commit }) {
     commit('setClearAllNotifications')
 
-    dispatch('announcements/dismissAll', {}, { root: true })
+    const announcementsStore = announcements()
+    announcementsStore.dismissAll()
   }
 }

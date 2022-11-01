@@ -4,6 +4,7 @@ import { RootState } from '../types'
 import { SocketActions } from '@/api/socketActions'
 import { Globals } from '@/globals'
 import { AppPushNotification } from '../notifications/types'
+import * as stores from '@/stores'
 
 let retryTimeout: number
 
@@ -26,11 +27,16 @@ export const actions: ActionTree<ServerState, RootState> = {
       payload.components &&
       payload.components.length > 0
     ) {
-      const componentsToInit: { [index: string]: { name: string; dispatch: string } } = Globals.MOONRAKER_COMPONENTS
+      const componentsToInit: { [index: string]: { name: string; dispatch?: string; store?: string; action?: string} } = Globals.MOONRAKER_COMPONENTS
       for (const key in componentsToInit) {
         const component = componentsToInit[key]
         if (payload.components.includes(component.name)) {
-          dispatch(component.dispatch, undefined, { root: true })
+          if (component.dispatch) {
+            dispatch(component.dispatch, undefined, { root: true })
+          } else if (component.store && component.action) {
+            const store = stores[component.store as keyof typeof stores]() // "get" store
+            store[component.action as keyof typeof store]() // call init action
+          }
         }
       }
     }
@@ -109,7 +115,7 @@ export const actions: ActionTree<ServerState, RootState> = {
     commit('setServiceState', payload)
   },
 
-  async onMachineThrottledState ({ commit, dispatch, state }, payload: ServerThrottledState) {
+  async onMachineThrottledState ({ commit, state }, payload: ServerThrottledState) {
     if (payload) {
       // If we have a throttled condition.
       if (payload && payload.flags.length > 0) {
@@ -150,7 +156,8 @@ export const actions: ActionTree<ServerState, RootState> = {
               }
             }
 
-            dispatch('notifications/pushNotification', n, { root: true })
+            const notificationsStore = stores.notifications()
+            notificationsStore.pushNotification(n)
           }
         })
       }

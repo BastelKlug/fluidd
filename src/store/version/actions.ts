@@ -4,6 +4,7 @@ import { VersionState } from './types'
 import { RootState } from '../types'
 import { SocketActions } from '@/api/socketActions'
 import i18n from '@/plugins/i18n'
+import { notifications } from '@/stores'
 
 export const actions: ActionTree<VersionState, RootState> = {
   /**
@@ -23,20 +24,22 @@ export const actions: ActionTree<VersionState, RootState> = {
   /**
    * Inits any file config we may have.
    */
-  async onUpdateStatus ({ commit, dispatch, getters }, payload) {
+  async onUpdateStatus ({ commit, getters }, payload) {
     commit('setUpdateStatus', payload)
+    const notificationsStore = notifications()
 
     if (getters.hasUpdates) {
-      dispatch('notifications/pushNotification', {
+      const notificationsStore = notifications()
+      notificationsStore.pushNotification({
         id: 'updates-available',
-        title: i18n.t('app.version.label.updates_available'),
+        title: i18n.t('app.version.label.updates_available').toString(),
         to: '/settings#versions',
-        btnText: i18n.t('app.version.btn.view_versions'),
+        btnText: i18n.t('app.version.btn.view_versions').toString(),
         type: 'info',
         merge: true
-      }, { root: true })
+      })
     } else {
-      dispatch('notifications/clearNotification', 'updates-available', { root: true })
+      notificationsStore.clearNotification('updates-available')
     }
   },
 
