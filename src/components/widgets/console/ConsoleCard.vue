@@ -30,7 +30,8 @@
         fab
         x-small
         text
-        @click="console.scrollToLatest(true)"
+        class="ml-1"
+        @click="consoleElement.scrollToLatest(true)"
       >
         <v-icon>{{ flipLayout ? '$up' : '$down' }}</v-icon>
       </app-btn>
@@ -39,8 +40,9 @@
         v-if="!fullScreen"
         color=""
         fab
-        small
+        x-small
         text
+        class="ml-1"
         @click="$filters.routeTo($router, '/console')"
       >
         <v-icon>$fullScreen</v-icon>
@@ -51,6 +53,7 @@
         fab
         x-small
         text
+        class="ml-1"
         @click="handleClear"
       >
         <v-icon>$delete</v-icon>
@@ -109,8 +112,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Mixins, Prop, Watch, Ref } from 'vue-property-decorator'
-import StateMixin from '@/mixins/state'
+import { Component, Vue, Prop, Watch, Ref } from 'vue-property-decorator'
 import Console from './Console.vue'
 import { ConsoleEntry } from '@/store/console/types'
 
@@ -119,7 +121,7 @@ import { ConsoleEntry } from '@/store/console/types'
     Console
   }
 })
-export default class ConsoleCard extends Mixins(StateMixin) {
+export default class ConsoleCard extends Vue {
   height = 0
 
   created () {
@@ -135,14 +137,11 @@ export default class ConsoleCard extends Mixins(StateMixin) {
     this.height = window.innerHeight
   }
 
-  @Prop({ type: Boolean, default: true })
-  readonly enabled!: boolean
-
   @Prop({ type: Boolean, default: false })
   readonly fullScreen!: boolean
 
   @Ref('console')
-  readonly console!: Console
+  readonly consoleElement!: Console
 
   scrollingPaused = false
 
@@ -173,7 +172,7 @@ export default class ConsoleCard extends Mixins(StateMixin) {
       server: true
     })
 
-    this.console.flipLayout = value
+    this.consoleElement.flipLayout = value
   }
 
   get items (): ConsoleEntry[] {
@@ -191,20 +190,20 @@ export default class ConsoleCard extends Mixins(StateMixin) {
   set autoScroll (value: boolean) {
     this.$store.dispatch('console/onUpdateAutoScroll', value)
     if (value) {
-      this.console.scrollToLatest(true)
+      this.consoleElement.scrollToLatest(true)
     }
   }
 
   @Watch('inLayout')
   inLayoutChange (inLayout: boolean) {
     if (!inLayout) {
-      this.console.scrollToLatest()
+      this.consoleElement.scrollToLatest()
     }
   }
 
   handleCollapseChange (collapsed: boolean) {
     if (!collapsed) {
-      this.console.scrollToLatest()
+      this.consoleElement.scrollToLatest()
     }
   }
 

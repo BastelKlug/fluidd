@@ -1,10 +1,15 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
+
 import { loadWASM } from 'onigasm'
+import onigasmWasm from 'onigasm/lib/onigasm.wasm?url'
+
 import { IGrammarDefinition, Registry } from 'monaco-textmate'
 import { wireTmGrammars } from 'monaco-editor-textmate'
 import getVueApp from '@/util/get-vue-app'
 import themeDark from '@/monaco/theme/editor.dark.theme.json'
 import themeLight from '@/monaco/theme/editor.light.theme.json'
+
+import { MonacoLanguageImports } from '@/dynamicImports'
 
 type CodeLensSupportedService = 'klipper' | 'moonraker' | 'moonraker-telegram-bot'
 
@@ -21,7 +26,7 @@ const getDocsSection = (service: CodeLensSupportedService, sectionName: string) 
         return 'stepper'
       }
 
-      if (/^extruder[0-9]+$/.test(sectionName)) {
+      if (/^extruder\d{0,2}$/.test(sectionName)) {
         return 'extruder'
       }
 
@@ -39,23 +44,20 @@ const getDocsSection = (service: CodeLensSupportedService, sectionName: string) 
 }
 
 async function setupMonaco () {
-  const wasm = await require('onigasm/lib/onigasm.wasm')
-  await loadWASM(wasm.default)
+  await Promise.all([
+    loadWASM(onigasmWasm),
+    import('./setupMonaco.features')
+  ])
 
   // Register our custom TextMate languages.
   const registry = new Registry({
     getGrammarDefinition: async (scopeName): Promise<IGrammarDefinition> => {
-      const fileName = scopeName.split('.').pop()
-      return import(
-                /* webpackChunkName: "grammar-[request]" */
-                `@/monaco/language/${fileName}.tmLanguage.json`
-      )
-        .then(language => {
-          return Promise.resolve({
-            format: 'json',
-            content: language.default
-          })
-        })
+      const languageName = scopeName.split('.').pop() ?? ''
+      const language = await MonacoLanguageImports[languageName]()
+      return {
+        format: 'json',
+        content: language
+      }
     }
   })
 

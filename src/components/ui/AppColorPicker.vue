@@ -10,7 +10,7 @@
       <v-btn
         v-show="!dot"
         v-bind="attrs"
-        :color="primaryColor.hexString"
+        :color="controlColor.hexString"
         outlined
         small
         v-on="on"
@@ -21,7 +21,7 @@
       <v-icon
         v-show="dot"
         v-bind="attrs"
-        :color="primaryColor.hexString"
+        :color="controlColor.hexString"
         v-on="on"
       >
         $circle
@@ -40,6 +40,7 @@
       </v-card-title>
       <v-card-text>
         <v-icon
+          v-if="supportedChannels !== 'W'"
           :color="primaryColor.hexString"
           large
         >
@@ -58,9 +59,9 @@
           align-center
           column
         >
-          <!-- <pre>{{primaryColor.hexString}}</pre> -->
           <!-- standard full color picker -->
           <app-iro-color-picker
+            v-if="supportedChannels !== 'W'"
             :color="primaryColor.hexString"
             :options="primaryOptions"
             @color:change="handleColorChange('primary', $event)"
@@ -76,13 +77,14 @@
           />
         </v-layout>
 
-        <!-- <pre>{{ primaryColor }}</pre>
-          <pre v-if="this.white">{{ whiteColor }}</pre> -->
         <v-layout
           class="mt-4"
           justify-space-between
         >
-          <div class="color-input">
+          <div
+            v-if="supportedChannels !== 'W'"
+            class="color-input"
+          >
             <v-text-field
               v-model.number="primaryColor.rgb.r"
               dense
@@ -91,7 +93,10 @@
             />
             <div>R</div>
           </div>
-          <div class="color-input">
+          <div
+            v-if="supportedChannels !== 'W'"
+            class="color-input"
+          >
             <v-text-field
               v-model.number="primaryColor.rgb.g"
               dense
@@ -100,7 +105,10 @@
             />
             <div>G</div>
           </div>
-          <div class="color-input">
+          <div
+            v-if="supportedChannels !== 'W'"
+            class="color-input"
+          >
             <v-text-field
               v-model.number="primaryColor.rgb.b"
               dense
@@ -114,7 +122,7 @@
             class="color-input"
           >
             <v-text-field
-              v-model="whiteColor.rgb.r"
+              v-model.number="whiteColor.rgb.r"
               dense
               hide-details
               outlined
@@ -220,6 +228,10 @@ export default class AppColorPicker extends Vue {
     ]
   }
 
+  get controlColor () {
+    return this.supportedChannels === 'W' ? this.whiteColor : this.primaryColor
+  }
+
   @Watch('primaryColor', { deep: true })
   onPrimaryColorChange (value: AppColor) {
     // Update the hex to reflect changes. This covers off users adjusting
@@ -322,6 +334,8 @@ export default class AppColorPicker extends Vue {
 </script>
 
 <style lang="scss" scoped>
+  @import 'vuetify/src/styles/styles.sass';
+
   .color-input div {
     margin: 0 2px;
     text-align: center;

@@ -43,8 +43,8 @@
         class="mr-1"
       >
         <app-save-config-and-restart-btn
-          :loading="hasWait(waits.onSaveConfig)"
-          :disabled="printerPrinting"
+          :loading="hasWait($waits.onSaveConfig)"
+          :disabled="printerPrinting || printerPaused"
           @click="saveConfigAndRestart"
         />
       </div>
@@ -69,9 +69,14 @@
         </v-tooltip>
       </div>
 
-      <div
-        v-if="authenticated && socketConnected && topNavPowerToggle"
-      >
+      <div v-if="authenticated && socketConnected && showUploadAndPrint">
+        <app-upload-and-print-btn
+          :disabled="printerPrinting || printerPaused"
+          @upload="handleUploadAndPrint"
+        />
+      </div>
+
+      <div v-if="authenticated && socketConnected && topNavPowerToggle">
         <v-tooltip bottom>
           <template #activator="{ on, attrs }">
             <app-btn
@@ -80,7 +85,7 @@
               :elevation="0"
               class="mr-1 bg-transparent"
               color="transparent"
-              :disabled="topNavPowerToggleDisabled"
+              :disabled="topNavPowerDeviceDisabled"
               v-bind="attrs"
               v-on="on"
               @click="handlePowerToggle()"
@@ -90,7 +95,7 @@
               </v-icon>
             </app-btn>
           </template>
-          <span>{{ $t(`app.general.label.turn_device_${topNavPowerDeviceOn ? 'off' : 'on'}`, { device: topNavPowerToggle }) }}</span>
+          <span>{{ $t(`app.general.label.turn_device_${topNavPowerDeviceOn ? 'off' : 'on'}`, { device: topNavPowerToggle.name }) }}</span>
         </v-tooltip>
       </div>
 
@@ -178,19 +183,22 @@ import { Component, Mixins } from 'vue-property-decorator'
 import UserPasswordDialog from '@/components/settings/auth/UserPasswordDialog.vue'
 import PendingChangesDialog from '@/components/settings/PendingChangesDialog.vue'
 import AppSaveConfigAndRestartBtn from './AppSaveConfigAndRestartBtn.vue'
-import { defaultState } from '@/store/layout/index'
+import AppUploadAndPrintBtn from './AppUploadAndPrintBtn.vue'
+import { defaultState } from '@/store/layout/state'
 import StateMixin from '@/mixins/state'
 import ServicesMixin from '@/mixins/services'
+import FilesMixin from '@/mixins/files'
 import { SocketActions } from '@/api/socketActions'
 
 @Component({
   components: {
     UserPasswordDialog,
     PendingChangesDialog,
-    AppSaveConfigAndRestartBtn
+    AppSaveConfigAndRestartBtn,
+    AppUploadAndPrintBtn
   }
 })
-export default class AppBar extends Mixins(StateMixin, ServicesMixin) {
+export default class AppBar extends Mixins(StateMixin, ServicesMixin, FilesMixin) {
   menu = false
   userPasswordDialogOpen = false
   pendingChangesDialogOpen = false
@@ -239,21 +247,65 @@ export default class AppBar extends Mixins(StateMixin, ServicesMixin) {
     return this.$store.state.config.uiSettings.general.showSaveConfigAndRestart
   }
 
-  get topNavPowerToggle (): null | string {
-    return this.$store.state.config.uiSettings.general.topNavPowerToggle
+  get showUploadAndPrint (): boolean {
+    return this.$store.state.config.uiSettings.general.showUploadAndPrint
   }
 
-  get topNavPowerDevice () {
-    return this.$store.state.power.devices.find((device: { device: string }) => device.device === this.topNavPowerToggle)
+  get topNavPowerToggle () {
+    const topNavPowerToggle = this.$store.state.config.uiSettings.general.topNavPowerToggle as string | null
+
+    if (!topNavPowerToggle) return null
+
+    const [name, type] = topNavPowerToggle.split(':')
+
+    switch (type) {
+      case 'klipper': {
+        const device = this.$store.getters['printer/getPinByName'](name)
+
+        return {
+          type,
+          name: device.prettyName,
+          device
+        }
+      }
+
+      default: {
+        const device = this.$store.state.power.devices.find((device: { device: string }) => device.device === topNavPowerToggle)
+        return {
+          type: 'moonraker',
+          name: topNavPowerToggle,
+          device
+        }
+      }
+    }
   }
 
   get topNavPowerDeviceOn () {
-    return this.topNavPowerDevice?.status === 'on'
+    const topNavPowerToggle = this.topNavPowerToggle
+
+    switch (topNavPowerToggle?.type) {
+      case 'moonraker':
+        return topNavPowerToggle.device.status === 'on'
+
+      case 'klipper':
+        return topNavPowerToggle.device.value !== 0
+    }
   }
 
-  get topNavPowerToggleDisabled (): boolean {
-    const device = this.topNavPowerDevice
-    return (!device) || (this.printerPrinting && device.locked_while_printing) || ['init', 'error'].includes(device.status) || (!this.devicePowerComponentEnabled)
+  get topNavPowerDeviceDisabled (): boolean {
+    const topNavPowerToggle = this.topNavPowerToggle
+
+    switch (topNavPowerToggle?.type) {
+      case 'moonraker': {
+        const device = topNavPowerToggle.device
+        return !device || (this.printerPrinting && device.locked_while_printing) || ['init', 'error'].includes(device.status) || (!this.devicePowerComponentEnabled)
+      }
+
+      case 'klipper':
+        return !topNavPowerToggle.device || !this.klippyReady
+    }
+
+    return true
   }
 
   handleExitLayout () {
@@ -313,10 +365,26 @@ export default class AppBar extends Mixins(StateMixin, ServicesMixin) {
     }
 
     if (res) {
-      const device = this.topNavPowerDevice
-      const state = (device.status === 'on') ? 'off' : 'on'
-      SocketActions.machineDevicePowerToggle(device.device, state)
+      const { type, device } = this.topNavPowerToggle || {}
+
+      switch (type) {
+        case 'moonraker': {
+          const state = (device.status === 'on') ? 'off' : 'on'
+          SocketActions.machineDevicePowerToggle(device.device, state)
+          break
+        }
+
+        case 'klipper': {
+          const value = (device.value !== 0) ? 0 : device.scale
+          this.sendGcode(`SET_PIN PIN=${device.name} VALUE=${value}`, `${this.$waits.onSetOutputPin}${device.name}`)
+          break
+        }
+      }
     }
+  }
+
+  handleUploadAndPrint (file: File) {
+    this.uploadFile(file, '/', 'gcodes', true)
   }
 
   saveConfigAndRestart (force = false) {
@@ -330,12 +398,14 @@ export default class AppBar extends Mixins(StateMixin, ServicesMixin) {
       }
     }
 
-    this.sendGcode('SAVE_CONFIG', this.waits.onSaveConfig)
+    this.sendGcode('SAVE_CONFIG', this.$waits.onSaveConfig)
   }
 }
 </script>
 
 <style lang="scss" scoped>
+  @import 'vuetify/src/styles/styles.sass';
+
   .toolbar-logo {
     display: flex;
     justify-content: center;

@@ -67,11 +67,9 @@
                 {{ (item.type === 'file' ? '$file' : item.name === '..' ? '$folderUp' : '$folder') }}
               </v-icon>
               <img
-                v-if="item.thumbnails && item.thumbnails.length"
-                class="file-icon-thumb"
-                :class="{dense}"
+                v-else
                 :style="{'max-width': `${thumbnailSize}px`, 'max-height': `${thumbnailSize}px`}"
-                :src="getThumbUrl(item.thumbnails, item.path, thumbnailSize > 32, item.modified)"
+                :src="getThumbUrl(item.thumbnails, item.path, thumbnailSize > 16, item.modified)"
               >
             </v-layout>
           </td>
@@ -256,7 +254,7 @@
             item-value="print_start_time"
           >
             <span v-if="item.print_start_time !== undefined && item.print_start_time !== null">
-              {{ $filters.formatDateTime(item.print_start_time, $store.state.config.uiSettings.general.dateformat + ' YYYY - ' + $store.state.config.uiSettings.general.timeformat) }}
+              {{ $filters.formatDateTime(item.print_start_time * 1000) }}
             </span>
           </file-row-item>
 
@@ -265,7 +263,7 @@
             item-value="modified"
           >
             <span v-if="item.modified !== undefined && item.modified !== null">
-              {{ $filters.formatDateTime(item.modified, $store.state.config.uiSettings.general.dateformat + ' YYYY - ' + $store.state.config.uiSettings.general.timeformat) }}
+              {{ $filters.formatDateTime(item.modified * 1000) }}
             </span>
           </file-row-item>
 
@@ -344,7 +342,9 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
   }
 
   get thumbnailSize () {
-    return this.$store.state.config.uiSettings.general.thumbnailSize
+    const thumbnailSize = this.$store.state.config.uiSettings.general.thumbnailSize
+
+    return this.dense ? thumbnailSize / 2 : thumbnailSize
   }
 
   mounted () {
@@ -419,7 +419,7 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
   }
 
   // File was dropped on another table row.
-  handleDrop (destination: FileBrowserEntry | AppFileWithMeta, e: { target: HTMLElement}) {
+  handleDrop (destination: FileBrowserEntry | AppFileWithMeta, e: DragEvent) {
     this.handleDragLeave(e)
     if (
       destination.type === 'directory' &&
@@ -435,20 +435,24 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
   }
 
   // Handles highlighting rows as drag over them
-  handleDragOver (e: { target: HTMLElement}) {
-    if (
-      e.target.tagName === 'TD' &&
-      e.target.parentElement?.classList.contains('is-directory')
-    ) {
-      const row = e.target.parentElement
-      if (row) row.classList.add('active')
+  handleDragOver (e: DragEvent) {
+    const element = e.target as HTMLElement
+    if (element) {
+      if (
+        element.tagName === 'TD' &&
+        element.parentElement?.classList.contains('is-directory')
+      ) {
+        const row = element.parentElement
+        if (row) row.classList.add('active')
+      }
     }
   }
 
   // Handles un highlighting rows as we drag out of them.
-  handleDragLeave (e: { target: HTMLElement}) {
-    if (e.target.tagName === 'TD') {
-      const row = e.target.parentElement
+  handleDragLeave (e: DragEvent) {
+    const element = e.target as HTMLElement
+    if (element?.tagName === 'TD') {
+      const row = element.parentElement
       if (row) row.classList.remove('active')
     }
   }
@@ -464,18 +468,10 @@ export default class FileSystemBrowser extends Mixins(FilesMixin) {
 </script>
 
 <style lang="scss" scoped>
-  @import '~vuetify/src/styles/styles.sass';
+  @import 'vuetify/src/styles/styles.sass';
 
   // Lighten up dark mode checkboxes.
   .theme--dark :deep(.v-simple-checkbox .v-icon) {
     color: rgba(map-deep-get($material-dark, 'inputs', 'box'), 0.25);
-  }
-
-  .file-icon-thumb {
-    max-width: 24px;
-  }
-
-  .file-icon-thumb.dense {
-    max-width: 16px;
   }
 </style>

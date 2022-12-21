@@ -4,6 +4,7 @@
     :height="height"
     :max-height="maxHeight"
     :class="{ 'no-pointer-events': dragState.overlay }"
+    flat
     @dragenter.capture.prevent="handleDragEnter"
     @dragover.prevent
     @dragleave.self.prevent="handleDragLeave"
@@ -53,8 +54,8 @@
 
     <file-system-context-menu
       v-if="contextMenuState.open"
+      v-model="contextMenuState.open"
       :root="currentRoot"
-      :open.sync="contextMenuState.open"
       :file="contextMenuState.file"
       :position-x="contextMenuState.x"
       :position-y="contextMenuState.y"
@@ -66,6 +67,7 @@
       @download="handleDownload"
       @preheat="handlePreheat"
       @preview-gcode="handlePreviewGcode"
+      @view-thumbnail="handleViewThumbnail"
     />
 
     <file-editor-dialog
@@ -87,7 +89,6 @@
       :name="fileNameDialogState.value"
       :title="fileNameDialogState.title"
       :label="fileNameDialogState.label"
-      :rules="fileNameDialogState.rules"
       @save="fileNameDialogState.handler"
     />
 
@@ -114,7 +115,6 @@
       :file="filePreviewState"
       removable
       downloadable
-      @close="handleClosePreview"
       @download="handleDownload"
       @remove="handleRemove"
     />
@@ -138,7 +138,6 @@ import {
   FilePreviewState,
   FileBrowserEntry
 } from '@/store/files/types'
-import { Waits } from '@/globals'
 import StateMixin from '@/mixins/state'
 import FilesMixin from '@/mixins/files'
 import ServicesMixin from '@/mixins/services'
@@ -152,7 +151,7 @@ import FileSystemDragOverlay from './FileSystemDragOverlay.vue'
 import FileSystemDownloadDialog from './FileSystemDownloadDialog.vue'
 import FileSystemUploadDialog from './FileSystemUploadDialog.vue'
 import FilePreviewDialog from './FilePreviewDialog.vue'
-import Axios, { AxiosResponse } from 'axios'
+import Axios from 'axios'
 import { AppTableHeader } from '@/types'
 
 /**
@@ -253,7 +252,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
     title: '',
     value: '',
     label: '',
-    rules: [],
     handler: ''
   }
 
@@ -262,6 +260,13 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
     type: '',
     filename: '',
     src: ''
+  }
+
+  @Watch('filePreviewState.open')
+  onFilePreviewStateChanged (value: boolean) {
+    if (!value && this.filePreviewState.src.startsWith('blob:')) {
+      URL.revokeObjectURL(this.filePreviewState.src)
+    }
   }
 
   // Gets available roots.
@@ -430,7 +435,7 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
 
   // Determine if we're waiting for a directory load on our current path.
   get filesLoading () {
-    return this.hasWaitsBy(Waits.onFileSystem)
+    return this.hasWaitsBy(this.$waits.onFileSystem)
   }
 
   // Get a list of currently active uploads.
@@ -571,9 +576,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
     if (this.disabled) return
     let title = this.$t('app.file_system.title.rename_dir')
     let label = this.$t('app.file_system.label.dir_name')
-    const rules: any = [
-      (v: string) => !!v || this.$t('app.general.simple_form.error.required')
-    ]
     if (item.type === 'file') {
       title = this.$t('app.file_system.title.rename_file')
       label = this.$t('app.file_system.label.file_name')
@@ -583,7 +585,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       title,
       label,
       value: item.name,
-      rules,
       handler: this.handleRename
     }
   }
@@ -595,7 +596,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       title: this.$t('app.file_system.title.add_file'),
       label: this.$t('app.file_system.label.file_name'),
       value: '',
-      rules: [(v: string) => !!v || this.$t('app.general.simple_form.error.required')],
       handler: this.handleAddFile
     }
   }
@@ -607,7 +607,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       title: this.$t('app.file_system.title.add_dir'),
       label: this.$t('app.file_system.label.dir_name'),
       value: '',
-      rules: [(v: string) => !!v || this.$t('app.general.simple_form.error.required')],
       handler: this.handleAddDir
     }
   }
@@ -637,7 +636,7 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
         cancelToken: this.cancelTokenSource.token
       }
     )
-      .then((response: AxiosResponse) => {
+      .then(response => {
         if (this.currentRoot === 'timelapse') {
           // Open the file preview dialog.
           const type = response.headers['content-type']
@@ -664,11 +663,6 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       .catch(e => e)
   }
 
-  handleClosePreview () {
-    this.filePreviewState.open = false
-    URL.revokeObjectURL(this.filePreviewState.src)
-  }
-
   handleCancelDownload () {
     if (this.cancelTokenSource) this.cancelTokenSource.cancel('User cancelled.')
     this.$store.dispatch('files/removeFileDownload')
@@ -691,6 +685,20 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       .finally(() => {
         this.$store.dispatch('files/removeFileDownload')
       })
+  }
+
+  async handleViewThumbnail (file: AppFileWithMeta) {
+    const thumb = this.getThumb(file.thumbnails ?? [], file.path, true)
+    if (!thumb) return
+    const thumbUrl = this.getThumbUrl([thumb], file.path, true)
+
+    this.filePreviewState = {
+      open: true,
+      src: thumbUrl,
+      type: 'image',
+      filename: file.filename,
+      width: thumb.width
+    }
   }
 
   /**
@@ -770,7 +778,7 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
     SocketActions.serverFilesMove(src, dest)
   }
 
-  handleRemove (file: FileBrowserEntry | AppFileWithMeta | (FileBrowserEntry | AppFileWithMeta)[], callback?: () => void) {
+  async handleRemove (file: FileBrowserEntry | AppFileWithMeta | (FileBrowserEntry | AppFileWithMeta)[], callback?: () => void) {
     if (this.disabled) return
 
     const items = (Array.isArray(file)) ? file.filter(item => (item.name !== '..')) : [file]
@@ -795,29 +803,26 @@ export default class FileSystem extends Mixins(StateMixin, FilesMixin, ServicesM
       items.push(...thumbnails)
     }
 
-    const text = this.$tc('app.file_system.msg.confirm')
-    this.$confirm(
-      text,
+    const res = await this.$confirm(
+      this.$tc('app.file_system.msg.confirm'),
       { title: this.$tc('app.general.label.confirm'), color: 'card-heading', icon: '$error' }
     )
-      .then(res => {
-        items.forEach((item) => {
-          if (res) {
-            if (item.type === 'directory') SocketActions.serverFilesDeleteDirectory(`${this.currentPath}/${item.name}`, true)
-            if (item.type === 'file') SocketActions.serverFilesDeleteFile(`${this.currentPath}/${item.name}`)
-          }
-        })
-
-        if (callback) {
-          callback()
-        }
+    if (res) {
+      items.forEach((item) => {
+        if (item.type === 'directory') SocketActions.serverFilesDeleteDirectory(`${this.currentPath}/${item.name}`, true)
+        if (item.type === 'file') SocketActions.serverFilesDeleteFile(`${this.currentPath}/${item.name}`)
       })
+
+      if (callback) {
+        callback()
+      }
+    }
   }
 
   async handleUpload (files: FileList | File[], print: boolean) {
-    this.$store.dispatch('wait/addWait', Waits.onFileSystem)
+    this.$store.dispatch('wait/addWait', this.$waits.onFileSystem)
     this.uploadFiles(files, this.visiblePath, this.currentRoot, print)
-    this.$store.dispatch('wait/removeWait', Waits.onFileSystem)
+    this.$store.dispatch('wait/removeWait', this.$waits.onFileSystem)
   }
 
   handleCancelUpload (file: FilesUpload) {

@@ -131,7 +131,9 @@ export default class ZHeightAdjust extends Mixins(StateMixin) {
   }
 
   get printerUsesProbeAsEndstop (): boolean {
-    return this.$store.getters['printer/getPrinterSettings']('stepper_z.endstop_pin') === 'probe:z_virtual_endstop'
+    const stepper = this.$store.getters['printer/getPrinterSettings']('stepper_z')
+
+    return !stepper || stepper.endstop_pin === 'probe:z_virtual_endstop'
   }
 
   async handleZApplyDialog () {
@@ -150,8 +152,8 @@ export default class ZHeightAdjust extends Mixins(StateMixin) {
       })
 
     if (res) {
-      this.sendGcode(gcode, this.waits.onZApply)
-      this.sendGcode('SAVE_CONFIG', this.waits.onSaveConfig)
+      this.sendGcode(gcode, this.$waits.onZApply)
+      this.sendGcode('SAVE_CONFIG', this.$waits.onSaveConfig)
     }
   }
 }

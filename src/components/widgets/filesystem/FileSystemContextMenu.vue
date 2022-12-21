@@ -1,13 +1,12 @@
 <template>
   <v-menu
+    v-model="open"
     transition="slide-y-transition"
-    :value="open"
     :position-x="positionX"
     :position-y="positionY"
     min-width="180"
     absolute
     right
-    @input="$emit('update:open', $event)"
   >
     <v-card>
       <v-row
@@ -16,28 +15,30 @@
         no-gutters
       >
         <v-col>
-          <v-list
-            dense
-          >
+          <v-list dense>
             <v-list-item
-              v-if="file.type !== 'directory' && rootProperties.accepts.includes('.' + file.extension) && rootProperties.canPrint"
+              v-if="canPrint"
               link
+              :disabled="!printerReady"
               @click="$emit('print', file)"
             >
               <v-list-item-icon>
-                <v-icon>$printer</v-icon>
+                <v-icon :disabled="!printerReady">
+                  $printer
+                </v-icon>
               </v-list-item-icon>
-              <v-list-item-title>
-                Print
-              </v-list-item-title>
+              <v-list-item-title>{{ $t('app.general.btn.print') }}</v-list-item-title>
             </v-list-item>
             <v-list-item
               v-if="canPreheat"
               link
+              :disabled="!printerReady"
               @click="$emit('preheat', file)"
             >
               <v-list-item-icon>
-                <v-icon>$fire</v-icon>
+                <v-icon :disabled="!printerReady">
+                  $fire
+                </v-icon>
               </v-list-item-icon>
               <v-list-item-title>{{ $t('app.general.btn.preheat') }}</v-list-item-title>
             </v-list-item>
@@ -107,11 +108,17 @@
           v-if="'thumbnails' in file && file.thumbnails && file.thumbnails.length"
           class="px-2 d-none d-sm-flex"
         >
-          <img
-            class="mr-2 ml-2"
-            :src="getThumbUrl(file.thumbnails, file.path, true, file.modified)"
-            :height="150"
+          <v-btn
+            text
+            height="100%"
+            @click="$emit('view-thumbnail', file)"
           >
+            <img
+              class="mx-2"
+              :src="getThumbUrl(file.thumbnails, file.path, true, file.modified)"
+              :height="150"
+            >
+          </v-btn>
         </v-col>
       </v-row>
     </v-card>
@@ -119,7 +126,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Mixins, Prop } from 'vue-property-decorator'
+import { Component, Mixins, Prop, VModel } from 'vue-property-decorator'
 import FilesMixin from '@/mixins/files'
 import StateMixin from '@/mixins/state'
 import { AppDirectory, AppFile, AppFileWithMeta } from '@/store/files/types'
@@ -129,11 +136,11 @@ import { AppDirectory, AppFile, AppFileWithMeta } from '@/store/files/types'
  */
 @Component({})
 export default class FileSystemContextMenu extends Mixins(StateMixin, FilesMixin) {
+  @VModel({ type: Boolean, default: false })
+    open!: boolean
+
   @Prop({ type: String, required: true })
   readonly root!: string
-
-  @Prop({ type: Boolean, default: false })
-  readonly open!: boolean
 
   @Prop({ type: Object, required: true })
   readonly file!: AppDirectory | AppFile | AppFileWithMeta
@@ -148,10 +155,23 @@ export default class FileSystemContextMenu extends Mixins(StateMixin, FilesMixin
     return this.$store.getters['files/getRootProperties'](this.root)
   }
 
+  get canPrint () {
+    return (
+      this.file.type !== 'directory' &&
+      this.rootProperties.accepts.includes('.' + this.file.extension) &&
+      this.rootProperties.canPrint
+    )
+  }
+
   get canPreheat () {
     return (
       'first_layer_extr_temp' in this.file &&
-      'first_layer_bed_temp' in this.file &&
+      'first_layer_bed_temp' in this.file
+    )
+  }
+
+  get printerReady () {
+    return (
       !this.printerPrinting &&
       !this.printerPaused &&
       this.klippyReady

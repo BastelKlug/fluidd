@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import { Globals, Waits } from '@/globals'
-import store from '../store'
 import { NotifyOptions } from '@/plugins/socketClient'
 import consola from 'consola'
 import { TimelapseWritableSettings } from '@/store/timelapse/types'
@@ -10,14 +9,7 @@ const baseEmit = (method: string, options: NotifyOptions) => {
     consola.warn('Socket emit denied, socket not ready.', method, options)
     return
   }
-  if (
-    !store.state.socket.disconnecting &&
-    !store.state.socket.connecting
-  ) {
-    Vue.$socket.emit(method, options)
-  } else {
-    consola.debug('Socket emit denied, in disonnecting state:', method, options)
-  }
+  Vue.$socket.emit(method, options)
 }
 
 export const SocketActions = {
@@ -71,19 +63,21 @@ export const SocketActions = {
   },
 
   async machineUpdateStatus (refresh = false) {
-    store.dispatch('version/refreshing', true)
     baseEmit(
       'machine.update.status', {
         dispatch: 'version/onUpdateStatus',
-        params: { refresh }
+        params: { refresh },
+        wait: Waits.onVersionRefresh
       }
     )
   },
 
   async machineUpdateRecover (name: string, hard = false) {
-    let dispatch = 'version/onUpdatedClient'
-    if (name === 'moonraker') dispatch = 'version/onUpdatedMoonraker'
-    if (name === 'klipper') dispatch = 'version/onUpdatedKlipper'
+    const dispatch = name === 'moonraker'
+      ? 'version/onUpdatedMoonraker'
+      : name === 'klipper'
+        ? 'version/onUpdatedKlipper'
+        : 'version/onUpdatedClient'
     baseEmit(
       'machine.update.recover', {
         dispatch,
@@ -112,8 +106,9 @@ export const SocketActions = {
   },
 
   async machineUpdateClient (name: string) {
-    let dispatch = 'version/onUpdatedClient'
-    if (name === 'fluidd') dispatch = 'version/onUpdatedFluidd'
+    const dispatch = name === 'fluidd'
+      ? 'version/onUpdatedFluidd'
+      : 'version/onUpdatedClient'
     baseEmit(
       'machine.update.client', {
         dispatch,
@@ -334,15 +329,10 @@ export const SocketActions = {
     )
   },
 
-  async identify () {
+  async identify (params?: { client_name: string, version: string, type: string, url: string }) {
     baseEmit('server.connection.identify', {
       dispatch: 'socket/onConnectionId',
-      params: {
-        client_name: Globals.APP_NAME,
-        version: `${store.state.version.fluidd.version || '0.0.0'}-${store.state.version.fluidd.hash || 'unknown'}`.trim(),
-        type: 'web',
-        url: Globals.GITHUB_REPO
-      }
+      params
     })
   },
 
@@ -448,10 +438,12 @@ export const SocketActions = {
   },
 
   async serverHistoryDeleteJob (uid: string) {
-    let params: any = { uid }
-    if (uid === 'all') {
-      params = { all: true }
-    }
+    const params = uid === 'all'
+      ? {
+          all: true
+        }
+      : { uid }
+
     baseEmit(
       'server.history.delete_job', {
         dispatch: 'history/onDelete',
